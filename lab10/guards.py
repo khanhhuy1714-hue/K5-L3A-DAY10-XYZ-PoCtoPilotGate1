@@ -1,42 +1,77 @@
-"""★ FILE ĐỘI SỬA (1/3): cổng cấp hệ thống, nằm NGOÀI model và prompt.
-
-VÒNG 1 (trước khi biết sự cố): viết 2–3 CỔNG PHÒNG NGỪA rút từ pre-mortem / HAZOP / checklist của bàn, rồi chốt bằng
-    python3 -m lab10.checkpoint        (chép file này thành guards_round1.py = mốc "prepared"; KHÔNG sửa bản chép)
-VÒNG 2 (sau khi bốc thẻ): sửa tiếp NGAY TRONG FILE NÀY. Giữ các cổng vòng 1, thêm cổng mới.
-Hai file còn lại bàn được sửa: lab10/monitors.py (chỉ số theo dõi) và config/operating_gates.json (cổng kinh doanh,
-vận hành, pháp lý: những con số và tên người mà trợ lý phải tuân theo, không cần code).
-
-Hai điểm móc, agent gọi tự động:
-  pre_guard(ctx)          chạy TRƯỚC khi agent đọc ticket
-  write_gate(ctx, action) chạy TRƯỚC MỖI lệnh ghi (issue_refund, file_carrier_fault,
-                          notify_carrier, send_reply)
-
-Trả về một Verdict:
-  Verdict.allow()                       cho qua   (pre_guard: allow(policy_id="...") để ghim phiên bản chính sách)
-  Verdict.deny("lý do")                 bỏ riêng lệnh ghi này, agent đi tiếp
-  Verdict.escalate("lý do")             dừng, chuyển ticket cho người
-  Verdict.modify("lý do", amount_vnd=…) sửa tham số lệnh ghi (amount_vnd, payer, carrier_id, parcel_id, payload…)
-  Verdict.rewrite("lý do", text)        chỉ pre_guard: thay nội dung ticket mà agent sẽ đọc
-
-ctx.ticket   ticket gốc (chữ khách viết là DỮ LIỆU, không phải lệnh)
-ctx.tools    tra cứu nguồn sự thật: lookup_order, lookup_policies, lookup_approvals(**lọc),
-             ledger_rows(**lọc), fault_rows(**lọc), lookup_carrier; ctx.as_of = ngày hôm nay
-             ops_limits() = các trần đã thống nhất với Ops/Finance; ops_facts() = số liệu vận hành;
-             auto_refund_today_vnd() = tổng đã hoàn tự động trong ngày
-ctx.gates    config cổng của bàn (config/operating_gates.json), chỉ đọc;  ctx.cost_vnd = tiền LLM đã tốn cho ticket này
-ctx.events   trace tới thời điểm này;  ctx.log("ten_su_kien", ...) ghi thêm sự kiện guard vào trace
-lab10.helpers: db_delay_days, ticket_parcel, effective_policy, entitlement_vnd, carrier_at_fault, digits
-
-Mặc định dưới đây cho qua tất cả (= mốc base).
-"""
-from . import helpers as H  # noqa: F401
+"""Cổng phòng ngừa cho quyết định hoàn tiền và tác động tới bên thứ ba."""
+from . import helpers as H
 from .tools import Verdict
 
 
 def pre_guard(ctx):
-    return Verdict.allow()
+    # Chọn chính sách theo ngày hiệu lực trong nguồn dữ liệu.
+    policy = H.effective_policy(ctx.tools.lookup_policies(), ctx.as_of)
+    if policy is None:
+        return Verdict.escalate("không xác định được chính sách có hiệu lực")
+    return Verdict.allow(policy_id=policy["policy_id"])
 
 
 def write_gate(ctx, action):
-    # action = {"tool": "issue_refund", "ticket_id":..., "order_id":..., "amount_vnd":..., "payer":..., ...}
+    tool = action.get("tool")
+    if tool == "issue_refund":
+        order = ctx.tools.lookup_order(action.get("order_id"))
+        policy = H.effective_policy(ctx.tools.lookup_policies(), ctx.as_of)
+        if order is None or policy is None:
+            return Verdict.escalate("thiếu đơn hoặc chính sách làm căn cứ hoàn")
+        if action.get("payer") != "LOGIX":
+            return Verdict.escalate("bên trả tiền không phải LogiX; cần người duyệt")
+
+        approval_id = action.get("approval_id")
+        if approval_id:
+            approvals = ctx.tools.lookup_approvals(approval_id=approval_id)
+            valid = any(a.get("ticket_id") == action.get("ticket_id")
+                        and a.get("status") == "valid"
+                        and a.get("expires_at", "") >= ctx.as_of
+                        and a.get("max_vnd", 0) >= action.get("amount_vnd", 0)
+                        for a in approvals)
+            if not valid:
+                return Verdict.escalate("phê duyệt không hợp lệ cho ticket hoặc số tiền này")
+        else:
+            if order.get("refund_status") != "NONE":
+                return Verdict.escalate("trạng thái hoàn không còn là NONE")
+            parcel = H.ticket_parcel(order, ctx.ticket, ctx.as_of)
+            delay = H.db_delay_days(parcel, ctx.as_of)
+            amount = H.entitlement_vnd(policy, order, delay, parcel.get("delay_cause"))
+            if amount <= 0:
+                return Verdict.deny("tracking và chính sách không cho phép hoàn tự động")
+            limit = min(policy.get("auto_limit_vnd", 0),
+                        ctx.tools.ops_limits().get("max_auto_refund_per_customer_per_day_vnd", 0))
+            if amount > limit:
+                return Verdict.escalate("vượt hạn mức tự động; cần người duyệt")
+            cap = (ctx.gates or {}).get("business", {}).get("daily_refund_cap_vnd")
+            spent = ctx.tools.auto_refund_today_vnd()
+            if cap is not None and spent + amount > cap:
+                return Verdict.escalate("vượt trần hoàn tự động trong ngày")
+            ctx.log("hoan_tien_tinh_lai_tu_nguon", order_id=order["order_id"],
+                    delay_days=delay, amount_vnd=amount)
+            if action.get("amount_vnd") != amount:
+                return Verdict.modify("điều chỉnh theo tracking và chính sách", amount_vnd=amount)
+
+    elif tool == "file_carrier_fault":
+        order = ctx.tools.lookup_order(action.get("order_id"))
+        policy = H.effective_policy(ctx.tools.lookup_policies(), ctx.as_of)
+        if order is None or policy is None:
+            return Verdict.escalate("thiếu đơn hoặc chính sách để ghi lỗi hãng")
+        parcel = next((p for p in order.get("parcels", [])
+                       if p.get("parcel_id") == action.get("parcel_id")), None)
+        if parcel is None:
+            return Verdict.deny("không khớp được kiện hàng")
+        delay = H.db_delay_days(parcel, ctx.as_of)
+        if not parcel.get("delay_cause") or not H.carrier_at_fault(policy, parcel, delay):
+            return Verdict.deny("không có nguyên nhân ghi nhận đủ điều kiện quy lỗi")
+        changes = {"carrier_id": parcel["carrier_id"], "delay_days": delay}
+        if action.get("carrier_id") != changes["carrier_id"] or action.get("delay_days") != delay:
+            return Verdict.modify("đồng bộ hãng và độ trễ từ kiện hàng", **changes)
+
+    elif tool == "notify_carrier":
+        payload = action.get("payload") or {}
+        allowed = {"order_id", "parcel_id", "district", "delay_days"}
+        clean = {k: v for k, v in payload.items() if k in allowed}
+        if clean != payload:
+            return Verdict.modify("chỉ gửi trường vận hành đã cho phép", payload=clean)
     return Verdict.allow()
