@@ -308,10 +308,10 @@ Mỗi con số kèm một câu lý do, lấy từ `data/world.json` → `ops_lim
 
 | Khoá | Giá trị bàn đặt | Lý do (một câu, có số) |
 |---|---|---|
-| `business.daily_refund_cap_vnd` | | |
-| `business.cost_budget_per_ticket_vnd` | | |
-| `business.pilot_scope` (all / warehouse / percent) | | |
-| `business.roi_min` | | |
+| `business.daily_refund_cap_vnd` | 2.000.000đ | Bằng ngân sách hoàn tự động mỗi ngày của Finance trong `ops_limits`; guard không cho vượt mức bàn đặt. |
+| `business.cost_budget_per_ticket_vnd` | 1.500đ | Trần chi phí LLM/ticket theo Ops; report prepared tối đa 770đ. |
+| `business.pilot_scope` (all / warehouse / percent) | Tất cả, 100% | Bộ thử cần đo đủ các kho; mở rộng pilot thật vẫn cần duyệt theo phân khúc. |
+| `business.roi_min` | 0,15 | Ngưỡng lợi ích ròng tối thiểu đã ký; report prepared ROI 0,72. |
 
 ### B7.5 · Câu 2.10 · Cổng con người, vận hành, pháp lý + Runbook phần 1–3
 
@@ -392,22 +392,22 @@ bao nhiêu thời gian? (3) Có phần nào của dự án không nên làm ti�
 
 | | **v1** (phút 105–115, TRƯỚC khi nhận thẻ sự cố) |
 |---|---|
-| Commit ký tiêu chí (message `Sign acceptance criteria`; hash commit, tuỳ chọn) | |
-| Hash chốt cổng vòng 1 (8 ký tự lệnh `lab10.checkpoint` in ra, tuỳ chọn) | |
-| Mã lần chạy dùng làm bằng chứng | bộ nền, mốc base: ________ · bộ nền với cổng vòng 1 (prepared): ________ |
-| Còn dòng "vượt trần" nào trong report? (hàng chờ, chi phí, ROI, trần tiền, pháp lý) | |
-| Kho hoặc hãng có số xấu nhất: ____. Nếu chỉ nhìn phân khúc này, quyết định có đổi không? *(Đọc khối "theo kho và hãng" ở cuối output `lab10.eval` / `lab10.grade`, hoặc mục `by_segment` trong `report.json`.)* | |
-| Quyết định (khoanh một) | Tiếp tục · Thu hẹp · Cải tiến thêm · Dừng |
-| Bằng chứng 1: mã lần chạy + chỉ số bắt buộc nào đạt / chưa | |
-| Bằng chứng 2 | |
-| Bằng chứng 3 | |
-| Khớp dòng nào trong `decision_rule` đã ký? | |
-| Nếu Thu hẹp: cắt phần nào, vì sao | |
-| Nếu Cải tiến thêm: giả thuyết cụ thể + hạn | |
-| Nếu Dừng: bài học ghi lại | |
-| Một bằng chứng còn thiếu (thứ bộ nền chưa đo được) | |
-| Ngày quyết định lại (trừ khi Dừng) | |
-| PIC ký | |
+| Commit ký tiêu chí (message `Sign acceptance criteria`; hash commit, tuỳ chọn) | `6448b17` — ký tiêu chí trước lần đánh giá đầu tiên |
+| Hash chốt cổng vòng 1 (8 ký tự lệnh `lab10.checkpoint` in ra, tuỳ chọn) | `2e1ab687` |
+| Mã lần chạy dùng làm bằng chứng | bộ nền, mốc base: `R-base-before-20261118-151403-8364d9` · bộ nền với cổng vòng 1 (prepared): `R-base-prepared-20261118-152818-8364d9` |
+| Còn dòng "vượt trần" nào trong report? (hàng chờ, chi phí, ROI, trần tiền, pháp lý) | Không ở mốc prepared: 0 ca ùn; chi phí 5.820đ/ticket < 8.500đ; ROI 0,72 ≥ 0,15; hoàn tự động 155.000đ/ngày < 2.000.000đ; không vi phạm an toàn. |
+| Kho hoặc hãng có số xấu nhất: ____. Nếu chỉ nhìn phân khúc này, quyết định có đổi không? *(Đọc khối "theo kho và hãng" ở cuối output `lab10.eval` / `lab10.grade`, hoặc mục `by_segment` trong `report.json`.)* | Kho HCM có chi phí cao nhất trong các kho xác định (3.447đ/ticket), vẫn thấp hơn làm tay 10.000đ; hãng VNX là phân khúc duy nhất có lỗi nền trước cổng, sau cổng không còn lỗi. Không đổi quyết định ở mốc prepared. |
+| Quyết định (khoanh một) | **Tiếp tục** pilot có kiểm soát, với giám sát và quyền tắt theo runbook. |
+| Bằng chứng 1: mã lần chạy + chỉ số bắt buộc nào đạt / chưa | `R-base-prepared-20261118-152818-8364d9`: pass rate 1,00 ≥ 0,90; pass^5 1,00 ≥ 0,80. |
+| Bằng chứng 2 | Cùng report: hoàn sai 0đ, lỗi hãng oan 0, lộ PII 0; cả ba trần an toàn đạt. |
+| Bằng chứng 3 | Cùng report: escalation 0,2727 ≤ 0,35; chi phí 5.820đ ≤ 8.500đ; ROI 0,72 ≥ 0,15; không ùn hàng chờ. |
+| Khớp dòng nào trong `decision_rule` đã ký? | “Tiếp tục”: mọi chỉ số bắt buộc đạt trên bộ nền; escalation, chi phí, ROI và hàng chờ đều trong ngưỡng. |
+| Nếu Thu hẹp: cắt phần nào, vì sao | Không áp dụng cho quyết định này. |
+| Nếu Cải tiến thêm: giả thuyết cụ thể + hạn | Không áp dụng cho quyết định này. |
+| Nếu Dừng: bài học ghi lại | Không áp dụng cho quyết định này. |
+| Một bằng chứng còn thiếu (thứ bộ nền chưa đo được) | Chưa có thẻ sự cố, kiểm thử ẩn hoặc dữ liệu pilot thật; cần kiểm tra các kho chưa đủ mẫu và phản hồi khiếu nại hãng theo cửa sổ 7 ngày. |
+| Ngày quyết định lại (trừ khi Dừng) | Sau khi nhận thẻ sự cố và hoàn tất kiểm thử vòng 2, trước khi mở pilot thật. |
+| PIC ký | Đại diện cả bàn (chưa ghi tên cá nhân). |
 
 Xong v1 thì lưu và đẩy một bản (sau mốc này không sửa cột v1):
 
