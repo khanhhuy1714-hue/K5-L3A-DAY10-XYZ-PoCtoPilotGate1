@@ -1,12 +1,17 @@
 {
-  "team": "",
-  "members": [],
-  "incident": "",
-  "decision_v1": "",
-  "decision_v2": "",
+  "team": "K5-L3A-DAY10-XYZ-PoCtoPilotGate1",
+  "members": [
+    "PhamHongKhanhHuy-2A202603588",
+    "TranHoangPhat-2A202603536",
+    "NguyenQuocViet-2A202603556",
+    "TrinhQuocDat-2A202603581"
+  ],
+  "incident": "S2",
+  "decision_v1": "Tiếp tục",
+  "decision_v2": "Tiếp tục",
   "three_lines": {
-    "environment_assumption": "",
-    "reduce_or_prevent": "",
-    "measure_in_pilot": ""
+    "environment_assumption": "Tracking theo kiện, nguyên nhân giao trễ, bảng phê duyệt và định danh duy nhất một khách hàng mỗi `customer_id` luôn được cập nhật chính xác, kịp thời và không bị tách nhiều tài khoản để lách trần ngày.",
+    "reduce_or_prevent": "Cổng `write_gate` ngăn hẳn lệnh trừ tiền shop (`payer=MERCHANT`), hoàn vượt hạn mức không có phê duyệt và hoàn cộng dồn vượt 300.000đ cho cùng một `customer_id` trong ngày vì mọi lệnh ghi đều tính lại từ nguồn sự thật; nhưng chỉ giảm chứ không ngăn tuyệt đối nếu nguồn tracking gốc bị sai hoặc kẻ gian dùng nhiều tài khoản khác nhau.",
+    "measure_in_pilot": "Cần đo lại tỉ lệ `refund_policy_override_or_cap_pct`, đối soát 100% các dòng hoàn với sổ Finance và đối soát shop hàng tuần, theo dõi cụm tài khoản trùng SĐT/địa chỉ nhận hoàn, tỉ lệ khiếu nại hãng 7 ngày, chi phí thực tế theo từng kho và thời gian chờ người duyệt ở giờ cao điểm."
   }
 }
