@@ -15,8 +15,8 @@ Họ tên đầy đủ và MSSV của **mọi** thành viên; thêm dòng nếu 
 | --: | --------- | ---- | --- | :---------: |
 |   1 | Phạm Hồng Khánh Huy          | 2A202603588      |     | Phạm Hồng Khánh Huy            |
 |   2 |      Trần Hoàng Phát     |   2A202603536   |     |             |
-|   3 |           |      |     |             |
-|   4 |           |      |     |             |
+|   3 | Nguyễn Quốc Việt          |  2A202603556    |     |             |
+|   4 | Trịnh Quốc Đạt          | 2A202603581     |     |             |
 
 Ghi `members` trong `submission/submission.json` theo dạng `"HoVaTen-MSSV"`, khớp bảng trên.
 
