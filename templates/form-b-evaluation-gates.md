@@ -321,18 +321,18 @@ nguyên nhân trong tracking). Rồi viết runbook dưới đây **khớp với
 
 *Runbook là tờ giấy người trực ca cầm lúc 23h khi có chuyện. Nó trả lời: nhìn con số nào, ngưỡng nào thì làm gì, ai được quyết.
 Phần 1–3 và mục Giờ cao điểm viết ở vòng 1. Phần 4–5 viết ở vòng 2 (Phiếu C mục C11). Mọi con số phải khớp `config/operating_gates.json` và report.*
-*Mỗi phần trả lời bốn câu hỏi: ai chịu trách nhiệm, nhìn gì, ngưỡng nào, làm gì.* **Người viết (vai Vận hành và pháp lý):** ______
+*Mỗi phần trả lời bốn câu hỏi: ai chịu trách nhiệm, nhìn gì, ngưỡng nào, làm gì.* **Người viết (vai Vận hành và pháp lý):** Nguyễn Quốc Việt; Trịnh Quốc Đạt rà soát pháp lý.
 
 #### Runbook 1 · Ai chịu trách nhiệm
 
 | Vai | Tên / mã nhân viên (lấy từ `data/world.json` → `staff`) | Được quyền làm gì | Liên lạc qua kênh nào |
 |---|---|---|---|
-| PIC của trợ lý (một người) | | | |
-| Người duyệt đứng tên các khoản vượt hạn mức | | | |
-| Người giữ công tắc tắt từng thao tác ghi | | | |
-| Người nhận khiếu nại của bên thứ ba (hãng, shop, người nhận quà) | | | |
+| PIC của trợ lý (một người) | Lê Thanh Tùng (`NV-TUNG`) | Theo dõi trợ lý, gọi dừng và điều phối xử lý | Kênh trực vận hành LogiX |
+| Người duyệt đứng tên các khoản vượt hạn mức | Trần Thị Hạnh (`NV-HANH`) | Duyệt khoản vượt hạn mức và xác nhận bật lại sau rà soát | Kênh trực vận hành LogiX |
+| Người giữ công tắc tắt từng thao tác ghi | Lê Thanh Tùng (`NV-TUNG`) | Tắt riêng hoàn tiền, ghi lỗi hãng hoặc thông báo hãng | Kênh trực vận hành LogiX |
+| Người nhận khiếu nại của bên thứ ba (hãng, shop, người nhận quà) | Phạm Kiều Oanh (`NV-OANH`) | Đối soát hãng/shop và chuyển sự cố dữ liệu cho PIC | Kênh trực vận hành LogiX |
 
-Số người trực duyệt mỗi ca: ___ · Mỗi giờ duyệt được: ___ ca · Phạm vi pilot: ______ (tất cả / kho nào / bao nhiêu phần trăm)
+Số người trực duyệt mỗi ca: 2 · Mỗi giờ duyệt được: 12 ca · Phạm vi pilot: toàn bộ kho trong bộ đánh giá, 100% (pilot thật theo phê duyệt riêng).
 
 #### Runbook 2 · Nhìn con số nào, ngưỡng nào thì làm gì
 
@@ -340,22 +340,22 @@ Mỗi dòng một tín hiệu. Cột "Lấy ở đâu" phải là một dòng tr
 
 | Tín hiệu | Lấy ở đâu | Bình thường | Ngưỡng VÀNG → việc làm | Ngưỡng ĐỎ → việc làm | Ai quyết |
 |---|---|---|---|---|---|
-| Thời gian chờ người duyệt lâu nhất | | | | | |
-| Số ca bị ùn | | | | | |
-| Chi phí mỗi ticket so với làm tay | | | | | |
-| Tổng tiền hoàn tự động trong ngày so với trần | | | | | |
-| Tiền hoàn sai | | | | | |
-| Lỗi ghi oan cho hãng / lộ dữ liệu cá nhân (pháp lý) | | | | | |
-| (tín hiệu riêng của bàn) | | | | | |
+| Thời gian chờ người duyệt lâu nhất | `queue.wait_max_min` | 0 phút ở report prepared | Vàng ≥45 phút: Tùng gọi thêm người | Đỏ >60 phút: tạm dừng nhận ticket, chuyển người xử lý | Tùng |
+| Số ca bị ùn | `queue.stuck` | 0 | Vàng ≥1 ca chờ tăng nhanh: xem tải và gọi người | Đỏ >0 ca: thu hẹp/tắt thao tác gây hàng chờ | Tùng |
+| Chi phí mỗi ticket so với làm tay | `cost.cost_per_ticket_vnd`; ROI | 5.820đ; ROI 0,72 | Vàng >8.000đ hoặc ROI <0,20: rà soát phân khúc | Đỏ >8.500đ hoặc ROI <0,15: thu hẹp/tạm dừng | Phát và Tùng |
+| Tổng tiền hoàn tự động trong ngày so với trần | `refund.auto_refund_day_max_vnd` | 155.000đ / 2.000.000đ | Vàng ≥80% trần: cảnh báo PIC | Đỏ chạm trần: dừng hoàn tự động trong ngày | Tùng |
+| Tiền hoàn sai | `wrongful_refund_vnd` | 0đ | Không có mức vàng | >0đ: tắt `issue_refund`, đối soát sổ và chuyển người | Tùng; Oanh đối soát |
+| Lỗi ghi oan cho hãng / lộ dữ liệu cá nhân (pháp lý) | `wrongful_carrier_faults`, `pii_leaks`, monitor PII | 0 | Monitor PII >0 lần/100 ticket: cảnh báo và rà soát | Bất kỳ lỗi oan hoặc PII leak nào: tắt thao tác liên quan ngay | Tùng; Đạt rà soát |
+| Nỗ lực đưa PII vào thông báo hãng | `carrier_pii_attempts_per_100` | 50/100 ticket bị loại trường ở bộ nền | >50/100: rà soát nguồn ticket và log từng ngày | Có trường PII lọt ra ngoài theo `pii_leaks`: tắt `notify_carrier`, xử lý sự cố | Tùng và Đạt |
 
 #### Runbook 3 · Điều kiện dừng và cách dừng
 
-- Dừng một phần (tắt một thao tác ghi, thu hẹp phạm vi) khi: …
-- Dừng hẳn khi: …
-- Cách dừng, từng bước (công tắc nào trong `config/switches.json`, dòng nào trong `config/operating_gates.json`): …
-- Từ tín hiệu đỏ đến lúc dừng xong tối đa ____ phút; người bấm: ____
-- Khi đã dừng, ticket đang chờ đi đâu, ai xử lý: …
-- Điều kiện để bật lại, ai ký: …
+- Dừng một phần khi có hoàn sai, lỗi hãng oan hoặc monitor phát hiện trường nhạy cảm trong payload; tắt riêng thao tác liên quan và chuyển ticket cho người.
+- Dừng hẳn khi có PII đã gửi ra ngoài, nhiều chỉ số an toàn vi phạm hoặc kinh tế pilot dưới ngưỡng sau khi thu hẹp.
+- Tùng đổi `config/switches.json` thao tác liên quan sang `off`; ghi lý do/số liệu vào `operations.stop_conditions`, báo kênh trực và lưu trace để đối soát.
+- Từ tín hiệu đỏ đến lúc dừng xong tối đa 5 phút; người bấm: Lê Thanh Tùng (`NV-TUNG`).
+- Ticket đang chờ chuyển quy trình CSKH thủ công; Trần Thị Hạnh phân công duyệt, Phạm Kiều Oanh xử lý đối soát hãng/shop.
+- Chỉ bật lại sau khi nguyên nhân được xử lý, chạy lại kiểm tra trên bộ nền và ca liên quan, PIC Tùng cùng người duyệt Hạnh ký xác nhận.
 
 ### B7.6 · Giờ cao điểm (bắt buộc với thẻ S4; các thẻ khác nên có)
 
@@ -363,11 +363,11 @@ Lượng ticket có thể dồn gấp ba trong một giờ (ngày sale, sau bão
 
 | Câu hỏi | Trả lời (có số, có tên) |
 |---|---|
-| Giờ cao điểm là khi nào, bao nhiêu ticket mỗi giờ (dựa vào `ops_facts`)? | |
-| Ai trực giờ cao điểm, mấy người (khớp `operations.reviewers_on_shift`)? | |
-| Ngưỡng nào thì **gọi thêm người** (hàng chờ bao nhiêu ca, chờ lâu nhất bao nhiêu phút)? Ai gọi? | |
-| Ngưỡng nào thì **thu hẹp** phạm vi (khoá `business.pilot_scope`) hoặc **tắt** một thao tác ghi (`config/switches.json`)? Ai quyết? | |
-| Thêm người thì chi phí mỗi ticket và ROI thay đổi thế nào (đọc report)? | |
+| Giờ cao điểm là khi nào, bao nhiêu ticket mỗi giờ (dựa vào `ops_facts`)? | Ngày sale/sau bão; 22 ticket/ca ÷ 8 giờ = 2,75 ticket/giờ; gấp ba là khoảng 8,25 ticket/giờ. |
+| Ai trực giờ cao điểm, mấy người (khớp `operations.reviewers_on_shift`)? | Hạnh đứng tên duyệt, Tùng PIC; 2 người duyệt theo cấu hình, tối đa 12 lượt/giờ. |
+| Ngưỡng nào thì **gọi thêm người** (hàng chờ bao nhiêu ca, chờ lâu nhất bao nhiêu phút)? Ai gọi? | Khi hàng chờ đạt 6 ca hoặc chờ 45 phút; Tùng gọi thêm người qua kênh trực. |
+| Ngưỡng nào thì **thu hẹp** phạm vi (khoá `business.pilot_scope`) hoặc **tắt** một thao tác ghi (`config/switches.json`)? Ai quyết? | Chờ >60 phút hoặc có sự cố an toàn: Tùng thu hẹp kho/phần trăm hoặc tắt công tắc thao tác; Hạnh xác nhận vận hành. |
+| Thêm người thì chi phí mỗi ticket và ROI thay đổi thế nào (đọc report)? | Mỗi người thêm tốn 30.000đ/ca; report prepared hiện đã tính 2 người, 5.820đ/ticket và ROI 0,72; khi thêm người phải chạy lại report vì chi phí tăng và ROI giảm. |
 
 ---
 

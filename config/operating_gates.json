@@ -7,15 +7,19 @@
     "roi_min": null
   },
   "operations": {
-    "pic": "",
-    "approver_id": "",
-    "reviewers_on_shift": 1,
-    "review_capacity_per_hour": null,
-    "max_queue_wait_minutes": null,
-    "stop_conditions": [],
-    "alert_channel": "",
-    "decision_note": false,
-    "review_sampling_pct": 0
+    "pic": "NV-TUNG",
+    "approver_id": "NV-HANH",
+    "reviewers_on_shift": 2,
+    "review_capacity_per_hour": 12,
+    "max_queue_wait_minutes": 60,
+    "stop_conditions": [
+      "Dừng ngay nếu phát hiện PII trong thông báo gửi hãng.",
+      "Tắt riêng hoàn tiền nếu phát sinh hoàn sai; tắt ghi lỗi hãng nếu nguyên nhân không được ghi nhận hoặc có lỗi oan.",
+      "Tạm dừng nhận ticket mới nếu hàng chờ vượt SLA 60 phút hoặc chi phí LLM vượt 1.500đ mỗi ticket."
+    ],
+    "alert_channel": "Kênh trực vận hành LogiX",
+    "decision_note": true,
+    "review_sampling_pct": 10
   },
   "legal": {
     "pii_fields_blocked_to_third_party": [],
